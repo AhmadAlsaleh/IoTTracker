@@ -1,0 +1,6 @@
+<resources>
+    <dimen name="main_margin">16dp</dimen>
+    <dimen name="main_logo">125dp</dimen>
+    <dimen name="input_text">18dp</dimen>
+    <dimen name="init_margin">5dp</dimen>
+</resources>
