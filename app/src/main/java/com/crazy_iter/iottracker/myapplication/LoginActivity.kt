@@ -18,6 +18,11 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
+        val getSharedPreferences = getSharedPreferences("tracker", Context.MODE_PRIVATE)
+        if (getSharedPreferences.getString("id", "").isNotEmpty()) {
+            enterToApp()
+        }
+
         loginBTN.setOnClickListener {
             if (loginUsernameET.text.isNotEmpty() && loginPasswordET.text.isNotEmpty()) {
                 login(loginUsernameET.text.toString(), loginPasswordET.text.toString())
@@ -26,6 +31,12 @@ class LoginActivity : AppCompatActivity() {
             }
         }
 
+    }
+
+    private fun enterToApp() {
+        Toast.makeText(this, "Welcome", Toast.LENGTH_SHORT).show()
+        startActivity(Intent(this, MapsActivity::class.java))
+        finish()
     }
 
     private fun login(username: String, password: String) {
@@ -40,10 +51,8 @@ class LoginActivity : AppCompatActivity() {
             val sharedPreferences = getSharedPreferences("tracker", Context.MODE_PRIVATE).edit()
             sharedPreferences.putString("id", it.getString("accountID"))
             sharedPreferences.apply()
-            Toast.makeText(this, "Welcome", Toast.LENGTH_SHORT).show()
 
-            startActivity(Intent(this, MapsActivity::class.java))
-            finish()
+            enterToApp()
 
         }, {
             LoginLoadingRL.visibility = View.GONE

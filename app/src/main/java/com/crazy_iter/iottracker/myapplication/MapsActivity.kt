@@ -1,14 +1,26 @@
 package com.crazy_iter.iottracker.myapplication
 
-import android.support.v7.app.AppCompatActivity
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
-
+import android.support.v7.app.AlertDialog
+import android.support.v7.app.AppCompatActivity
+import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import com.android.volley.toolbox.JsonArrayRequest
+import com.android.volley.toolbox.Volley
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+import kotlinx.android.synthetic.main.activity_maps.*
+import java.util.*
+
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -17,27 +29,90 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+
+        supportActionBar?.setDisplayShowHomeEnabled(true)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
         val mapFragment = supportFragmentManager
                 .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
     }
 
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
-        // Add a marker in Sydney and move the camera
-        val sydney = LatLng(-34.0, 151.0)
-        mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
+        val getSharedPreferences = getSharedPreferences("tracker", Context.MODE_PRIVATE)
+        val getAPI = URLs.realTime + getSharedPreferences.getString("id", "")
+
+        val queue = Volley.newRequestQueue(this)
+        val jsonArrayRequest = JsonArrayRequest(getAPI, {
+
+            mapLoadingRL.visibility = View.GONE
+            if (it.length() == 0) {
+                return@JsonArrayRequest
+            }
+
+            for (i in 0 until it.length()) {
+                val jsonObject = it.getJSONObject(i)
+                val latLng = LatLng(jsonObject.getDouble("lat"), jsonObject.getDouble("long"))
+
+                val cols = ArrayList<Float>()
+                cols.add(BitmapDescriptorFactory.HUE_CYAN)
+                cols.add(BitmapDescriptorFactory.HUE_GREEN)
+                cols.add(BitmapDescriptorFactory.HUE_MAGENTA)
+                cols.add(BitmapDescriptorFactory.HUE_ORANGE)
+                cols.add(BitmapDescriptorFactory.HUE_ROSE)
+                cols.add(BitmapDescriptorFactory.HUE_YELLOW)
+                val col = cols[Random().nextInt(cols.size)]
+                mMap.addMarker(MarkerOptions()
+                        .position(latLng)
+                        .title(jsonObject.getString("name"))
+                        .snippet(jsonObject.getString("date") + " - " + jsonObject.getString("time"))
+                        .icon(BitmapDescriptorFactory.defaultMarker(col)))
+                        .showInfoWindow()
+            }
+
+            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(0.0, 0.0), 2F))
+
+        }, {
+            Log.e("map error", "error")
+        })
+        queue.add(jsonArrayRequest)
+
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.map_menu, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+
+        when (item?.itemId) {
+            android.R.id.home -> onBackPressed()
+            R.id.mapLayers -> {
+                if (mMap.mapType == GoogleMap.MAP_TYPE_NORMAL) {
+                    mMap.mapType = GoogleMap.MAP_TYPE_SATELLITE
+                } else {
+                    mMap.mapType = GoogleMap.MAP_TYPE_NORMAL
+                }
+            }
+            R.id.mapExit -> {
+                AlertDialog.Builder(this)
+                        .setMessage("Sure to logout and exit?")
+                        .setNegativeButton("No",null)
+                        .setPositiveButton("Yes") { _,_ ->
+                            val getSharedPreferences = getSharedPreferences("tracker", Context.MODE_PRIVATE).edit()
+                            getSharedPreferences.putString("id", "")
+                            getSharedPreferences.apply()
+
+                            finish()
+                            startActivity(Intent(this, LoginActivity::class.java))
+                        }
+                        .create().show()
+            }
+        }
+
+        return super.onOptionsItemSelected(item)
     }
 }
