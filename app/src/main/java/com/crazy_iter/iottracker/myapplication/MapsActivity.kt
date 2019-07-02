@@ -3,6 +3,7 @@ package com.crazy_iter.iottracker.myapplication
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
@@ -25,6 +26,8 @@ import java.util.*
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
+    private val REP = 1000L
+    private var isFirst = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,9 +44,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
+        loadPins()
+
+    }
+
+    private fun loadPins() {
         val getSharedPreferences = getSharedPreferences("tracker", Context.MODE_PRIVATE)
         val getAPI = URLs.realTime + getSharedPreferences.getString("id", "")
-
         val queue = Volley.newRequestQueue(this)
         val jsonArrayRequest = JsonArrayRequest(getAPI, {
 
@@ -52,33 +59,51 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 return@JsonArrayRequest
             }
 
+            val cols = ArrayList<Float>()
+            cols.add(BitmapDescriptorFactory.HUE_CYAN)
+            cols.add(BitmapDescriptorFactory.HUE_ORANGE)
+            cols.add(BitmapDescriptorFactory.HUE_GREEN)
+            cols.add(BitmapDescriptorFactory.HUE_MAGENTA)
+            cols.add(BitmapDescriptorFactory.HUE_ROSE)
+            cols.add(BitmapDescriptorFactory.HUE_YELLOW)
+
+            var latLng: LatLng? = LatLng(0.0, 0.0)
             for (i in 0 until it.length()) {
                 val jsonObject = it.getJSONObject(i)
-                val latLng = LatLng(jsonObject.getDouble("lat"), jsonObject.getDouble("long"))
+                latLng = LatLng(jsonObject.getDouble("lat"), jsonObject.getDouble("long"))
+                val col = if (i >= 6) {
+                    cols[i%6]
+                } else {
+                    cols[i]
+                }
 
-                val cols = ArrayList<Float>()
-                cols.add(BitmapDescriptorFactory.HUE_CYAN)
-                cols.add(BitmapDescriptorFactory.HUE_GREEN)
-                cols.add(BitmapDescriptorFactory.HUE_MAGENTA)
-                cols.add(BitmapDescriptorFactory.HUE_ORANGE)
-                cols.add(BitmapDescriptorFactory.HUE_ROSE)
-                cols.add(BitmapDescriptorFactory.HUE_YELLOW)
-                val col = cols[Random().nextInt(cols.size)]
-                mMap.addMarker(MarkerOptions()
+                val marker = mMap.addMarker(MarkerOptions()
                         .position(latLng)
                         .title(jsonObject.getString("name"))
                         .snippet(jsonObject.getString("date") + " - " + jsonObject.getString("time"))
                         .icon(BitmapDescriptorFactory.defaultMarker(col)))
-                        .showInfoWindow()
+                if (i == 0) {
+                    marker.showInfoWindow()
+                }
+            }
+            if (isFirst) {
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10F))
+                isFirst = false
             }
 
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(0.0, 0.0), 2F))
+            Handler().postDelayed({
+                loadPins()
+            }, REP)
 
         }, {
             Log.e("map error", "error")
+
+            Handler().postDelayed({
+                loadPins()
+            }, REP)
+
         })
         queue.add(jsonArrayRequest)
-
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
