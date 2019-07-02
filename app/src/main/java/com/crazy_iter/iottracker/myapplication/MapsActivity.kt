@@ -59,6 +59,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 return@JsonArrayRequest
             }
 
+            mMap.clear()
             val cols = ArrayList<Float>()
             cols.add(BitmapDescriptorFactory.HUE_CYAN)
             cols.add(BitmapDescriptorFactory.HUE_ORANGE)
